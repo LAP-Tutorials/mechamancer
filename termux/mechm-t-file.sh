@@ -5,13 +5,14 @@ SHORTCUT="$HOME/.bin/mechm-t-file"
 
 # Step 1: Shortcut creation
 create_shortcut() {
-    mkdir -p "$HOME/.bin"
     if [ ! -f "$SHORTCUT" ]; then
+        mkdir -p "$HOME/.bin"
+        touch "$HOME/.bashrc"
         echo "Creating global shortcut 'mechm-t-file' in $HOME/.bin..."
         echo "#!/bin/bash" > "$SHORTCUT"
         echo "bash $(realpath "$0")" >> "$SHORTCUT"
         chmod +x "$SHORTCUT"
-        echo "Shortcut created. You can now run the script using 'mechm-t-file'."
+        echo "Shortcut created. Use 'mechm-t-file' to run the script."
 
         # Ensure ~/.bin is in PATH
         if ! grep -q 'export PATH="$HOME/.bin:$PATH"' "$HOME/.bashrc" 2>/dev/null; then
@@ -27,18 +28,18 @@ create_shortcut() {
 
 create_shortcut
 
-# Step 2: Browse Function
+# Step 2: Recursive file browser using ls
 browse_path() {
     local current_dir="$1"
     while true; do
         clear
         echo "Current directory: $current_dir"
         echo "0) Go up one directory"
-        echo "q) Quit browsing"
+        echo "q) Cancel operation"
         echo
 
-        # List files and folders with numbers
-        mapfile -t entries < <(ls -Ap "$current_dir" 2>/dev/null)
+        # List files and folders using ls
+        mapfile -t entries < <(ls -A "$current_dir" 2>/dev/null)
 
         if [ ${#entries[@]} -eq 0 ]; then
             echo "No files/folders found here."
@@ -49,7 +50,7 @@ browse_path() {
         fi
 
         echo
-        read -p "Choose an option or number: " choice
+        read -p "Choose a number or option: " choice
         echo
 
         if [[ "$choice" == "q" ]]; then
@@ -77,18 +78,19 @@ browse_path() {
         local selected="${entries[$((choice-1))]}"
         local selected_path="$current_dir/$selected"
 
-        if [[ "$selected" == */ ]]; then
-            selected="${selected%/}"
-            selected_path="$current_dir/$selected"
-            echo "Directory selected: $selected_path"
-            read -p "Press 'y' to select this folder, or 'n' to browse inside: " confirm
+        if [ -d "$selected_path" ]; then
+            # Folder selected
+            echo "Folder selected: $selected_path"
+            read -p "Do you want to perform the operation on this folder? (y/n): " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
                 echo "$selected_path"
                 return 0
             else
+                # Go deeper into the folder
                 current_dir="$selected_path"
             fi
         else
+            # File selected
             echo "File selected: $selected_path"
             read -p "Press 'y' to select this file, or 'n' to cancel: " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
@@ -100,25 +102,10 @@ browse_path() {
 }
 
 # Step 3: Utility Functions
-copy_item() {
-    cp -r "$1" "$2"
-    echo "Copied successfully."
-}
-
-move_item() {
-    mv "$1" "$2"
-    echo "Moved successfully."
-}
-
-remove_item() {
-    rm -rf "$1"
-    echo "Removed successfully."
-}
-
-rename_item() {
-    mv "$1" "$2"
-    echo "Renamed successfully."
-}
+copy_item() { cp -r "$1" "$2" && echo "Copied successfully."; }
+move_item() { mv "$1" "$2" && echo "Moved successfully."; }
+remove_item() { rm -rf "$1" && echo "Removed successfully."; }
+rename_item() { mv "$1" "$2" && echo "Renamed successfully."; }
 
 # Step 4: Main Loop
 while true; do
@@ -144,10 +131,19 @@ while true; do
         *) echo "Invalid choice. Press Enter to continue..."; read; continue ;;
     esac
 
-    # Step 5: Source Path
+    # Step 5: File or Folder
     clear
     echo "Operation: $op_name"
-    read -p "Do you know the path of the file/folder? (y/n): " knows_path
+    echo "Are you performing the operation on a file or a folder?"
+    echo "1) File"
+    echo "2) Folder"
+    read -p "> " file_or_folder
+    echo
+
+    # Step 6: Source Path
+    clear
+    echo "Do you know the path of the $([ "$file_or_folder" == "1" ] && echo "file" || echo "folder")? (y/n)"
+    read -p "> " knows_path
     echo
 
     if [[ "$knows_path" == "y" || "$knows_path" == "Y" ]]; then
@@ -178,18 +174,19 @@ while true; do
         continue
     fi
 
-    # Step 6: Ask if it's a file or folder
-    if [ -d "$source_path" ]; then
-        read -p "Is this a folder? (y/n): " is_folder
-        if [[ "$is_folder" == "y" || "$is_folder" == "Y" ]]; then
-            read -p "Do you want to copy/move the whole folder? (y/n): " copy_folder
-            if [[ "$copy_folder" == "n" || "$copy_folder" == "N" ]]; then
-                source_path=$(browse_path "$source_path")
-            fi
-        fi
+    # Validate that the selected item matches the user's file/folder choice
+    if [ "$file_or_folder" == "1" ] && [ ! -f "$source_path" ]; then
+        echo "Selected item is not a file. Press Enter to continue..."
+        read
+        continue
+    fi
+    if [ "$file_or_folder" == "2" ] && [ ! -d "$source_path" ]; then
+        echo "Selected item is not a folder. Press Enter to continue..."
+        read
+        continue
     fi
 
-    # Step 7: Destination Path
+    # Step 7: Destination Path (if needed)
     if [ "$operation" == "1" ] || [ "$operation" == "2" ]; then
         read -p "Enter the destination path: " destination_path
         if [ -z "$destination_path" ]; then

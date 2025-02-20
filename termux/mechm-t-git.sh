@@ -32,8 +32,8 @@ fi
 
 # Step 3: Shortcut creation (First thing done)
 create_shortcut() {
-    mkdir -p "$HOME/.bin"
     if [ ! -f "$SHORTCUT" ]; then
+    mkdir -p "$HOME/.bin"
 	touch "$HOME/.bashrc"
         echo "Creating global shortcut 'mechm-t-git' in $HOME/.bin..."
         echo "#!/bin/bash" > "$SHORTCUT"
