@@ -2,7 +2,8 @@
 
 # Variables
 CONFIG_DIR="$HOME/.mechanancer_config"
-CONFIG_FILE="$CONFIG_DIR/repos.conf"
+CONFIG_TYPE="termux"
+CONFIG_FILE="$CONFIG_DIR/$CONFIG_TYPE/repos.conf"
 SHORTCUT="$HOME/.bin/mechm-t-git"
 MAX_REPOS=5
 
@@ -17,10 +18,23 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
-# Step 1: Create config directory
-mkdir -p "$CONFIG_DIR"
+# Step 1: Create config directory if it doesn't exist
+if [ ! -d "$CONFIG_DIR" ]; then
+    echo "Creating config directory: $CONFIG_DIR"
+    mkdir -p "$CONFIG_DIR"
+else
+    echo "Config directory already exists: $CONFIG_DIR"
+fi
 
-# Step 2: Shortcut creation (First thing done)
+# Step 2: Create CONFIG_TYPE folder within CONFIG_DIR if it doesn't exist
+if [ ! -d "$CONFIG_DIR/$CONFIG_TYPE" ]; then
+    echo "Creating config type directory: $CONFIG_DIR/$CONFIG_TYPE"
+    mkdir -p "$CONFIG_DIR/$CONFIG_TYPE"
+else
+    echo "Config type directory already exists: $CONFIG_DIR/$CONFIG_TYPE"
+fi
+
+# Step 3: Shortcut creation (First thing done)
 create_shortcut() {
     mkdir -p "$HOME/.bin"
     if [ ! -f "$SHORTCUT" ]; then
@@ -30,7 +44,6 @@ create_shortcut() {
         echo "bash $(realpath "$0")" >> "$SHORTCUT"
         chmod +x "$SHORTCUT"
         echo -e "${GREEN}Shortcut created. You can now run the script using 'mechm-t-git' from anywhere.${NC}"
-    fi
 
     # Ensure ~/.bin is in PATH
     if ! grep -q 'export PATH="$HOME/.bin:$PATH"' "$HOME/.bashrc"; then
@@ -43,10 +56,11 @@ create_shortcut() {
 
     export PATH="$HOME/.bin:$PATH"
     echo -e "${GREEN}Added '$HOME/.bin' to PATH. Restart Termux or run 'source ~/.bashrc' or 'source ~/.zshrc' to apply changes.${NC}"
+    fi
 }
 create_shortcut
 
-# Step 3: Load config
+# Step 4: Load config
 declare -a REPOS
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
