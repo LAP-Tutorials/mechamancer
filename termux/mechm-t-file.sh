@@ -28,7 +28,7 @@ create_shortcut() {
 
 create_shortcut
 
-# Step 2: File browser using ls
+# Step 2: Simple file browser using basic Bash
 browse_path() {
     local current_dir="$1"
     while true; do
@@ -38,20 +38,25 @@ browse_path() {
         echo "q) Cancel operation"
         echo
 
-        # List files and folders using ls -a (show hidden files and folders too)
-        mapfile -t entries < <(ls -a "$current_dir" 2>/dev/null | grep -v '^.$' | grep -v '^..$')  # Exclude '.' and '..'
+        # List files and folders using traditional Bash (no advanced syntax)
+        entries=()
+        i=1
+        for entry in "$current_dir"/* "$current_dir"/.*; do
+            # Exclude '.' and '..'
+            if [[ "$entry" != "$current_dir/." && "$entry" != "$current_dir/.." && -e "$entry" ]]; then
+                entries+=("$entry")
+                basename=$(basename "$entry")
+                if [ -d "$entry" ]; then
+                    echo "$i) $basename/"
+                else
+                    echo "$i) $basename"
+                fi
+                ((i++))
+            fi
+        done
 
         if [ ${#entries[@]} -eq 0 ]; then
             echo "No files/folders found here."
-        else
-            for i in "${!entries[@]}"; do
-                # Mark folders with '/' at the end
-                if [ -d "$current_dir/${entries[$i]}" ]; then
-                    printf "%s) %s/\n" "$((i+1))" "${entries[$i]}"
-                else
-                    printf "%s) %s\n" "$((i+1))" "${entries[$i]}"
-                fi
-            done
         fi
 
         echo
@@ -68,38 +73,30 @@ browse_path() {
             continue
         fi
 
-        if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
-            echo "Invalid choice. Press Enter to continue..."
-            read
-            continue
-        fi
-
-        if [ "$choice" -lt 1 ] || [ "$choice" -gt "${#entries[@]}" ]; then
+        if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "${#entries[@]}" ]; then
             echo "Invalid selection. Press Enter to continue..."
             read
             continue
         fi
 
         local selected="${entries[$((choice-1))]}"
-        local selected_path="$current_dir/$selected"
 
-        if [ -d "$selected_path" ]; then
+        if [ -d "$selected" ]; then
             # Folder selected
-            echo "Folder selected: $selected_path"
+            echo "Folder selected: $selected"
             read -p "Do you want to perform the operation on this folder? (y/n): " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-                echo "$selected_path"
+                echo "$selected"
                 return 0
             else
-                # Go deeper into the folder
-                current_dir="$selected_path"
+                current_dir="$selected"
             fi
         else
             # File selected
-            echo "File selected: $selected_path"
+            echo "File selected: $selected"
             read -p "Press 'y' to select this file, or 'n' to cancel: " confirm
             if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-                echo "$selected_path"
+                echo "$selected"
                 return 0
             fi
         fi
