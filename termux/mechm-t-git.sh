@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Variables
-CONFIG_DIR="$HOME/.mechanancer_config"
+CONFIG_DIR="$HOME/.mechamancer_config"
 CONFIG_TYPE="termux"
 CONFIG_FILE="$CONFIG_DIR/$CONFIG_TYPE/repos.conf"
 SHORTCUT="$HOME/.bin/mechm-t-git"
