@@ -5,6 +5,7 @@ Welcome to the Mechamancer script collection! This README will guide you on how 
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Warning](#warning)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Contributing](#contributing)
@@ -13,6 +14,10 @@ Welcome to the Mechamancer script collection! This README will guide you on how 
 ## Introduction
 
 Mechamancer is a collection of scripts designed to automate and enhance various mechanical tasks. Whether you're a hobbyist or a professional, these scripts can help streamline your workflow.
+
+## WARNING
+
+Don't run scripts in termux on your windows, linux, or mac terminal. They are meant to be run on termux only. This applies to all of the other scripts that can be found.
 
 ## Installation
 
@@ -45,10 +50,6 @@ chmod +x termux/mechm-t-git.sh
 ## NOTE
 
 Some scripts may require you do mark them as executable on some devices before running them. You can do this by running `chmod +x script_name.sh` or run our install script `chmod +x install.sh` in the terminal.
-
-## WARNING
-
-Don't run scripts in termux on your windows, linux, or mac terminal. They are meant to be run on termux only. This applies to all of the other scripts that can be found.
 
 ## Contributing
 
