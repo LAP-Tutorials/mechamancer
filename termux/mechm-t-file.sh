@@ -38,14 +38,19 @@ browse_path() {
         echo "q) Cancel operation"
         echo
 
-        # List files and folders using ls
-        mapfile -t entries < <(ls -Ap "$current_dir" 2>/dev/null)
+        # List files and folders using ls -a (show hidden files and folders too)
+        mapfile -t entries < <(ls -a "$current_dir" 2>/dev/null | grep -v '^.$' | grep -v '^..$')  # Exclude '.' and '..'
 
         if [ ${#entries[@]} -eq 0 ]; then
             echo "No files/folders found here."
         else
             for i in "${!entries[@]}"; do
-                printf "%s) %s\n" "$((i+1))" "${entries[$i]}"
+                # Mark folders with '/' at the end
+                if [ -d "$current_dir/${entries[$i]}" ]; then
+                    printf "%s) %s/\n" "$((i+1))" "${entries[$i]}"
+                else
+                    printf "%s) %s\n" "$((i+1))" "${entries[$i]}"
+                fi
             done
         fi
 
@@ -78,7 +83,7 @@ browse_path() {
         local selected="${entries[$((choice-1))]}"
         local selected_path="$current_dir/$selected"
 
-        if [[ "$selected" == */ ]]; then
+        if [ -d "$selected_path" ]; then
             # Folder selected
             echo "Folder selected: $selected_path"
             read -p "Do you want to perform the operation on this folder? (y/n): " confirm
