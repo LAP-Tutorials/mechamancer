@@ -38,8 +38,8 @@ browse_path() {
         echo "q) Cancel operation"
         echo
 
-        # List files and folders using ls
-        mapfile -t entries < <(ls -A "$current_dir" 2>/dev/null)
+        # Use ls -p to list directories with '/'
+        mapfile -t entries < <(ls -Ap "$current_dir" 2>/dev/null)
 
         if [ ${#entries[@]} -eq 0 ]; then
             echo "No files/folders found here."
@@ -78,7 +78,7 @@ browse_path() {
         local selected="${entries[$((choice-1))]}"
         local selected_path="$current_dir/$selected"
 
-        if [ -d "$selected_path" ]; then
+        if [[ "$selected" == */ ]]; then
             # Folder selected
             echo "Folder selected: $selected_path"
             read -p "Do you want to perform the operation on this folder? (y/n): " confirm
