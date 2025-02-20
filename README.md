@@ -47,6 +47,12 @@ chmod +x termux/mechm-t-git.sh
 ./termux/mechm-t-git.sh
 ```
 
+once you've run it for the first time, next time you want to run the same script all you need to do is run the following command in your home or anywhere in termux:
+
+```bash
+mechm-t-git
+```
+
 ## NOTE
 
 Some scripts may require you do mark them as executable on some devices before running them. You can do this by running `chmod +x script_name.sh` or run our install script `chmod +x install.sh` in the terminal.
