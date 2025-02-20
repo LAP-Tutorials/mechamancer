@@ -28,7 +28,7 @@ create_shortcut() {
 
 create_shortcut
 
-# Step 2: Recursive file browser using ls
+# Step 2: File browser using ls
 browse_path() {
     local current_dir="$1"
     while true; do
@@ -38,7 +38,7 @@ browse_path() {
         echo "q) Cancel operation"
         echo
 
-        # Use ls -p to list directories with '/'
+        # List files and folders using ls
         mapfile -t entries < <(ls -Ap "$current_dir" 2>/dev/null)
 
         if [ ${#entries[@]} -eq 0 ]; then
