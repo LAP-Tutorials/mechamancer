@@ -159,8 +159,12 @@ while true; do
 
         if [ "$start_choice" == "1" ]; then
             source_path=$(browse_path "/")
+            echo "Selected path: $source_path"
+            ls -l "$source_path"
         else
             source_path=$(browse_path "$HOME")
+            echo "Selected path: $source_path"
+            ls -l "$source_path"
         fi
 
         if [ -z "$source_path" ]; then
