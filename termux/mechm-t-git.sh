@@ -22,16 +22,12 @@ fi
 if [ ! -d "$CONFIG_DIR" ]; then
     echo "Creating config directory: $CONFIG_DIR"
     mkdir -p "$CONFIG_DIR"
-else
-    echo "Config directory already exists: $CONFIG_DIR"
 fi
 
 # Step 2: Create CONFIG_TYPE folder within CONFIG_DIR if it doesn't exist
 if [ ! -d "$CONFIG_DIR/$CONFIG_TYPE" ]; then
     echo "Creating config type directory: $CONFIG_DIR/$CONFIG_TYPE"
     mkdir -p "$CONFIG_DIR/$CONFIG_TYPE"
-else
-    echo "Config type directory already exists: $CONFIG_DIR/$CONFIG_TYPE"
 fi
 
 # Step 3: Shortcut creation (First thing done)
