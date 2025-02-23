@@ -2,6 +2,16 @@
 
 # Variables
 SHORTCUT="$HOME/.bin/mechm-t-file"
+TERMUX_ROOT="/data/data/com.termux/files"
+HOME_DIR="$HOME"
+SDCARD_DIR="/sdcard"
+
+# Colors
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+NC='\033[0m'
 
 # Step 1: Shortcut creation
 create_shortcut() {
@@ -28,195 +38,164 @@ create_shortcut() {
 
 create_shortcut
 
-# Step 2: Simple file browser using basic Bash
-browse_path() {
-    local current_dir="$1"
+# Core functions
+show_header() {
+    clear
+    echo -e "${BLUE}Termux File Manager${NC}"
+    echo -e "Current path: ${YELLOW}$(pwd)${NC}"
+    echo "----------------------------------------"
+}
+
+list_contents() {
+    local dir="$1"
+    local items=()
+    
+    # Add parent directory
+    if [[ "$dir" != "$TERMUX_ROOT" && "$dir" != "/" ]]; then
+        echo "0) .. (parent directory)"
+    fi
+
+    # List directories first
+    local i=1
+    while IFS= read -r -d $'\0' item; do
+        if [[ -d "$item" ]]; then
+            items+=("$item")
+            echo -e "${GREEN}$i) $(basename "$item")/${NC}"
+            ((i++))
+        fi
+    done < <(find "$dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null | sort -z)
+
+    # List files
+    while IFS= read -r -d $'\0' item; do
+        if [[ -f "$item" ]]; then
+            items+=("$item")
+            echo -e "$i) $(basename "$item")"
+            ((i++))
+        fi
+    done < <(find "$dir" -mindepth 1 -maxdepth 1 -type f -print0 2>/dev/null | sort -z)
+
+    echo "----------------------------------------"
+    echo -e "${RED}q) Quit${NC}"
+    echo -e "${YELLOW}b) Back to main menu${NC}"
+}
+
+browse_directory() {
+    local current_dir="${1:-$TERMUX_ROOT}"
+    
     while true; do
-        clear
-        echo "Current directory: $current_dir"
-        echo "0) Go up one directory"
-        echo "q) Cancel operation"
-        echo
-
-        # List files and folders using traditional Bash (no advanced syntax)
-        entries=()
-        i=1
-        for entry in "$current_dir"/* "$current_dir"/.*; do
-            # Exclude '.' and '..'
-            if [[ "$entry" != "$current_dir/." && "$entry" != "$current_dir/.." && -e "$entry" ]]; then
-                entries+=("$entry")
-                basename=$(basename "$entry")
-                if [ -d "$entry" ]; then
-                    echo "$i) $basename/"
+        show_header
+        list_contents "$current_dir"
+        
+        read -p "Select item or action: " choice
+        
+        case $choice in
+            0)
+                current_dir=$(dirname "$current_dir")
+                ;;
+            q|Q)
+                echo "Exiting..."
+                exit 0
+                ;;
+            b|B)
+                return 1
+                ;;
+            [0-9]*)
+                local items=()
+                while IFS= read -r -d $'\0' item; do
+                    items+=("$item")
+                done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -print0 2>/dev/null | sort -z)
+                
+                if [[ $choice -le ${#items[@]} ]]; then
+                    selected="${items[$((choice-1))]}"
+                    if [[ -d "$selected" ]]; then
+                        current_dir="$selected"
+                    else
+                        echo -e "Selected file: ${YELLOW}$selected${NC}"
+                        return 0
+                    fi
                 else
-                    echo "$i) $basename"
+                    echo -e "${RED}Invalid selection!${NC}"
+                    sleep 1
                 fi
-                ((i++))
-            fi
-        done
-
-        if [ ${#entries[@]} -eq 0 ]; then
-            echo "No files/folders found here."
-        fi
-
-        echo
-        read -p "Choose a number or option: " choice
-        echo
-
-        if [[ "$choice" == "q" ]]; then
-            echo "Browsing cancelled."
-            return 1
-        elif [[ "$choice" == "0" ]]; then
-            if [ "$current_dir" != "/" ] && [ "$current_dir" != "$HOME" ]; then
-                current_dir="$(dirname "$current_dir")"
-            fi
-            continue
-        fi
-
-        if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "${#entries[@]}" ]; then
-            echo "Invalid selection. Press Enter to continue..."
-            read
-            continue
-        fi
-
-        local selected="${entries[$((choice-1))]}"
-
-        if [ -d "$selected" ]; then
-            # Folder selected
-            echo "Folder selected: $selected"
-            read -p "Do you want to perform the operation on this folder? (y/n): " confirm
-            if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-                echo "$selected"
-                return 0
-            else
-                current_dir="$selected"
-            fi
-        else
-            # File selected
-            echo "File selected: $selected"
-            read -p "Press 'y' to select this file, or 'n' to cancel: " confirm
-            if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-                echo "$selected"
-                return 0
-            fi
-        fi
+                ;;
+            *)
+                echo -e "${RED}Invalid input!${NC}"
+                sleep 1
+                ;;
+        esac
     done
 }
 
-# Step 3: Utility Functions
-copy_item() { cp -r "$1" "$2" && echo "Copied successfully."; }
-move_item() { mv "$1" "$2" && echo "Moved successfully."; }
-remove_item() { rm -rf "$1" && echo "Removed successfully."; }
-rename_item() { mv "$1" "$2" && echo "Renamed successfully."; }
+main_menu() {
+    while true; do
+        show_header
+        echo -e "${GREEN}1) Browse Termux storage"
+        echo "2) Browse Home directory"
+        echo "3) Browse SD Card"
+        echo "4) File operations"
+        echo -e "${RED}0) Exit${NC}"
+        
+        read -p "Select option: " main_choice
+        
+        case $main_choice in
+            1) browse_directory "$TERMUX_ROOT" ;;
+            2) browse_directory "$HOME_DIR" ;;
+            3) browse_directory "$SDCARD_DIR" ;;
+            4) file_operations ;;
+            0) exit 0 ;;
+            *) echo -e "${RED}Invalid option!${NC}"; sleep 1 ;;
+        esac
+    done
+}
 
-# Step 4: Main Loop
-while true; do
-    clear
-    echo "========== Mechm File Manager =========="
-    echo "Select an operation:"
-    echo "1) Copy"
-    echo "2) Move"
-    echo "3) Remove"
-    echo "4) Rename"
-    echo "0) Exit"
-    echo "======================================="
-    echo
-    read -p "Enter choice: " operation
-    echo
-
-    case "$operation" in
-        1) op_name="Copy" ;;
-        2) op_name="Move" ;;
-        3) op_name="Remove" ;;
-        4) op_name="Rename" ;;
-        0) echo "Goodbye!"; exit 0 ;;
-        *) echo "Invalid choice. Press Enter to continue..."; read; continue ;;
+file_operations() {
+    show_header
+    echo -e "${GREEN}1) Copy file"
+    echo "2) Move file"
+    echo "3) Delete file"
+    echo "4) Create directory"
+    echo -e "${YELLOW}5) Back to main menu${NC}"
+    
+    read -p "Select operation: " op_choice
+    
+    case $op_choice in
+        1) perform_operation "copy" ;;
+        2) perform_operation "move" ;;
+        3) delete_file ;;
+        4) create_directory ;;
+        5) return ;;
+        *) echo -e "${RED}Invalid operation!${NC}"; sleep 1 ;;
     esac
+}
 
-    # Step 5: File or Folder
-    clear
-    echo "Operation: $op_name"
-    echo "Are you performing the operation on a file or a folder?"
-    echo "1) File"
-    echo "2) Folder"
-    read -p "> " file_or_folder
-    echo
-
-    # Step 6: Source Path
-    clear
-    echo "Do you know the path of the $([ "$file_or_folder" == "1" ] && echo "file" || echo "folder")? (y/n)"
-    read -p "> " knows_path
-    echo
-
-    if [[ "$knows_path" == "y" || "$knows_path" == "Y" ]]; then
-        read -p "Enter the absolute path: " source_path
-    else
-        echo "Where do you want to start browsing?"
-        echo "1) / (root)"
-        echo "2) ~ (home)"
-        read -p "> " start_choice
-        echo
-
-        if [ "$start_choice" == "1" ]; then
-            source_path=$(browse_path "/")
-            echo "Selected path: $source_path"
-            ls -l "$source_path"
-        else
-            source_path=$(browse_path "$HOME")
-            echo "Selected path: $source_path"
-            ls -l "$source_path"
-        fi
-
-        if [ -z "$source_path" ]; then
-            echo "No item selected. Press Enter to continue..."
-            read
-            continue
-        fi
-    fi
-
-    if [ ! -e "$source_path" ]; then
-        echo "Invalid path. Press Enter to continue..."
-        read
-        continue
-    fi
-
-    # Validate that the selected item matches the user's file/folder choice
-    if [ "$file_or_folder" == "1" ] && [ ! -f "$source_path" ]; then
-        echo "Selected item is not a file. Press Enter to continue..."
-        read
-        continue
-    fi
-    if [ "$file_or_folder" == "2" ] && [ ! -d "$source_path" ]; then
-        echo "Selected item is not a folder. Press Enter to continue..."
-        read
-        continue
-    fi
-
-    # Step 7: Destination Path (if needed)
-    if [ "$operation" == "1" ] || [ "$operation" == "2" ]; then
-        read -p "Enter the destination path: " destination_path
-        if [ -z "$destination_path" ]; then
-            echo "No destination provided. Press Enter to continue..."
-            read
-            continue
-        fi
-    elif [ "$operation" == "4" ]; then
-        read -p "Enter the new name or path: " destination_path
-        if [ -z "$destination_path" ]; then
-            echo "No new name provided. Press Enter to continue..."
-            read
-            continue
-        fi
-    fi
-
-    # Step 8: Perform Operation
-    case "$operation" in
-        1) copy_item "$source_path" "$destination_path" ;;
-        2) move_item "$source_path" "$destination_path" ;;
-        3) remove_item "$source_path" ;;
-        4) rename_item "$source_path" "$destination_path" ;;
+perform_operation() {
+    local operation=$1
+    browse_directory && src_file="$selected"
+    browse_directory && dest_dir="$selected"
+    
+    case $operation in
+        "copy")
+            cp -r "$src_file" "$dest_dir" && echo -e "${GREEN}File copied successfully!${NC}" || echo -e "${RED}Copy failed!${NC}"
+            ;;
+        "move")
+            mv "$src_file" "$dest_dir" && echo -e "${GREEN}File moved successfully!${NC}" || echo -e "${RED}Move failed!${NC}"
+            ;;
     esac
+    sleep 2
+}
 
-    echo
-    read -p "Press Enter to continue..." dummy
-done
+delete_file() {
+    browse_directory && file_to_delete="$selected"
+    read -p "Are you sure you want to delete '$file_to_delete'? (y/n): " confirm
+    [[ "$confirm" == [yY] ]] && rm -rf "$file_to_delete" && echo -e "${GREEN}Deleted successfully!${NC}" || echo -e "${YELLOW}Deletion cancelled${NC}"
+    sleep 2
+}
+
+create_directory() {
+    read -p "Enter directory name: " dir_name
+    mkdir -p "$dir_name" && echo -e "${GREEN}Directory created!${NC}" || echo -e "${RED}Creation failed!${NC}"
+    sleep 2
+}
+
+# Start
+main_menu

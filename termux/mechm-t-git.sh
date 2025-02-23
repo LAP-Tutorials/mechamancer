@@ -200,6 +200,12 @@ git_push() {
     git push
 }
 
+# Force pull changes
+force_pull() {
+    git fetch --all
+    git reset --hard origin/master
+}
+
 # Main menu
 while true; do
     select_repo
@@ -210,16 +216,17 @@ while true; do
         echo "2) Commit (add and commit)"
         echo "3) Push (git push)"
         echo "4) Pull (git pull)"
-        echo "5) Log (git log --oneline)"
-        echo "6) Branch (git branch)"
-        echo "7) Diff (git diff)"
-        echo "8) Stash (git stash)"
-        echo "9) Stash Pop (git stash pop)"
-        echo "10) Remote (git remote -v)"
-        echo "11) Rebase (git rebase)"
-        echo "12) Merge (git merge)"
-        echo "13) Manage Repositories"
-        echo "14) Change Repository"
+        echo "5) Force Pull (git fetch --all, git reset --hard origin/master)"
+        echo "6) Log (git log --oneline)"
+        echo "7) Branch (git branch)"
+        echo "8) Diff (git diff)"
+        echo "9) Stash (git stash)"
+        echo "10) Stash Pop (git stash pop)"
+        echo "11) Remote (git remote -v)"
+        echo "12) Rebase (git rebase)"
+        echo "13) Merge (git merge)"
+        echo "14) Manage Repositories"
+        echo "15) Change Repository"
         echo "0) Exit"
         echo
         read -p "Enter your choice: " git_choice
@@ -230,22 +237,23 @@ while true; do
             2) commit_changes ;;
             3) git_push ;;
             4) git pull ;;
-            5) git log --oneline ;;
-            6) git branch ;;
-            7) git diff ;;
-            8) git stash ;;
-            9) git stash pop ;;
-            10) git remote -v ;;
-            11)
+            5) force_pull ;;
+            6) git log --oneline ;;
+            7) git branch ;;
+            8) git diff ;;
+            9) git stash ;;
+            10) git stash pop ;;
+            11) git remote -v ;;
+            12)
                 read -p "Enter branch to rebase onto: " branch
                 echo
                 git rebase "$branch" ;;
-            12)
+            13)
                 read -p "Enter branch to merge: " branch
                 echo
                 git merge "$branch" ;;
-            13) manage_repos ;;
-            14) break ;;
+            14) manage_repos ;;
+            15) break ;;
             0)
                 echo -e "${GREEN}Goodbye!${NC}\n"
                 exit 0 ;;
