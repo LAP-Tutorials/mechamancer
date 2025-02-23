@@ -203,7 +203,7 @@ git_push() {
 # Force pull changes
 force_pull() {
     git fetch --all
-    git reset --hard origin/master
+    git reset --hard origin/main
 }
 
 # Main menu
@@ -216,7 +216,7 @@ while true; do
         echo "2) Commit (add and commit)"
         echo "3) Push (git push)"
         echo "4) Pull (git pull)"
-        echo "5) Force Pull (git fetch --all, git reset --hard origin/master)"
+        echo "5) Force Pull (git fetch --all, git reset --hard origin/main)"
         echo "6) Log (git log --oneline)"
         echo "7) Branch (git branch)"
         echo "8) Diff (git diff)"
