@@ -42,12 +42,12 @@ create_shortcut
 show_header() {
     clear
     echo -e "${BLUE}Termux File Manager${NC}"
-    echo -e "Current path: ${YELLOW}$(pwd)${NC}"
+    echo -e "Current path: ${YELLOW}$current_dir${NC}"
     echo "----------------------------------------"
 }
 
 list_contents() {
-    local dir="$1"
+    local dir="$current_dir"
     local items=()
     
     # Add parent directory
@@ -80,11 +80,9 @@ list_contents() {
 }
 
 browse_directory() {
-    local current_dir="${1:-$TERMUX_ROOT}"
-    
     while true; do
         show_header
-        list_contents "$current_dir"
+        list_contents
         
         read -p "Select item or action: " choice
         
@@ -110,7 +108,7 @@ browse_directory() {
                     if [[ -d "$selected" ]]; then
                         current_dir="$selected"
                     else
-                        echo -e "Selected file: ${YELLOW}$selected${NC}"
+                        echo -e "Selected: ${YELLOW}$selected${NC}"
                         return 0
                     fi
                 else
@@ -138,9 +136,9 @@ main_menu() {
         read -p "Select option: " main_choice
         
         case $main_choice in
-            1) browse_directory "$TERMUX_ROOT" ;;
-            2) browse_directory "$HOME_DIR" ;;
-            3) browse_directory "$SDCARD_DIR" ;;
+            1) current_dir="$TERMUX_ROOT"; browse_directory ;;
+            2) current_dir="$HOME_DIR"; browse_directory ;;
+            3) current_dir="$SDCARD_DIR"; browse_directory ;;
             4) file_operations ;;
             0) exit 0 ;;
             *) echo -e "${RED}Invalid option!${NC}"; sleep 1 ;;
@@ -149,51 +147,106 @@ main_menu() {
 }
 
 file_operations() {
-    show_header
-    echo -e "${GREEN}1) Copy file"
-    echo "2) Move file"
-    echo "3) Delete file"
-    echo "4) Create directory"
-    echo -e "${YELLOW}5) Back to main menu${NC}"
-    
-    read -p "Select operation: " op_choice
-    
-    case $op_choice in
-        1) perform_operation "copy" ;;
-        2) perform_operation "move" ;;
-        3) delete_file ;;
-        4) create_directory ;;
-        5) return ;;
-        *) echo -e "${RED}Invalid operation!${NC}"; sleep 1 ;;
-    esac
+    while true; do
+        show_header
+        echo -e "${GREEN}1) Copy"
+        echo "2) Move"
+        echo "3) Delete"
+        echo "4) Create directory"
+        echo "5) Rename"
+        echo -e "${YELLOW}6) Back to main menu${NC}"
+        
+        read -p "Select operation: " op_choice
+        
+        case $op_choice in
+            1) perform_operation "copy" ;;
+            2) perform_operation "move" ;;
+            3) delete_item ;;
+            4) create_directory ;;
+            5) rename_item ;;
+            6) return ;;
+            *) echo -e "${RED}Invalid operation!${NC}"; sleep 1 ;;
+        esac
+    done
 }
 
 perform_operation() {
     local operation=$1
-    browse_directory && src_file="$selected"
-    browse_directory && dest_dir="$selected"
+    echo -e "\n${BLUE}Select source item:${NC}"
+    browse_directory
+    local src="$selected"
     
-    case $operation in
-        "copy")
-            cp -r "$src_file" "$dest_dir" && echo -e "${GREEN}File copied successfully!${NC}" || echo -e "${RED}Copy failed!${NC}"
-            ;;
-        "move")
-            mv "$src_file" "$dest_dir" && echo -e "${GREEN}File moved successfully!${NC}" || echo -e "${RED}Move failed!${NC}"
-            ;;
-    esac
+    echo -e "\n${BLUE}Select destination directory:${NC}"
+    browse_directory
+    local dest="$selected"
+    
+    if [[ -n "$src" && -n "$dest" ]]; then
+        read -p $'\e[31mAre you sure? (y/n): \e[0m' confirm
+        if [[ "$confirm" == [yY] ]]; then
+            case $operation in
+                "copy")
+                    cp -rv "$src" "$dest" && echo -e "${GREEN}Copied successfully!${NC}" || echo -e "${RED}Copy failed!${NC}"
+                    ;;
+                "move")
+                    mv -v "$src" "$dest" && echo -e "${GREEN}Moved successfully!${NC}" || echo -e "${RED}Move failed!${NC}"
+                    ;;
+            esac
+        else
+            echo -e "${YELLOW}Operation cancelled${NC}"
+        fi
+    else
+        echo -e "${RED}Invalid selection!${NC}"
+    fi
     sleep 2
 }
 
-delete_file() {
-    browse_directory && file_to_delete="$selected"
-    read -p "Are you sure you want to delete '$file_to_delete'? (y/n): " confirm
-    [[ "$confirm" == [yY] ]] && rm -rf "$file_to_delete" && echo -e "${GREEN}Deleted successfully!${NC}" || echo -e "${YELLOW}Deletion cancelled${NC}"
+delete_item() {
+    echo -e "\n${BLUE}Select item to delete:${NC}"
+    browse_directory
+    local target="$selected"
+    
+    if [[ -n "$target" ]]; then
+        read -p $'\e[31mARE YOU SURE? (y/n): \e[0m' confirm
+        if [[ "$confirm" == [yY] ]]; then
+            rm -rvf "$target" && echo -e "${GREEN}Deleted successfully!${NC}" || echo -e "${RED}Deletion failed!${NC}"
+        else
+            echo -e "${YELLOW}Deletion cancelled${NC}"
+        fi
+    fi
     sleep 2
 }
 
 create_directory() {
+    show_header
     read -p "Enter directory name: " dir_name
-    mkdir -p "$dir_name" && echo -e "${GREEN}Directory created!${NC}" || echo -e "${RED}Creation failed!${NC}"
+    if [[ -n "$dir_name" ]]; then
+        mkdir -pv "$current_dir/$dir_name" && echo -e "${GREEN}Directory created!${NC}" || echo -e "${RED}Creation failed!${NC}"
+    else
+        echo -e "${RED}Invalid name!${NC}"
+    fi
+    sleep 2
+}
+
+rename_item() {
+    echo -e "\n${BLUE}Select item to rename:${NC}"
+    browse_directory
+    local target="$selected"
+    
+    if [[ -n "$target" ]]; then
+        show_header
+        echo -e "Renaming: ${YELLOW}$target${NC}"
+        read -p "Enter new name: " new_name
+        if [[ -n "$new_name" ]]; then
+            read -p $'\e[31mConfirm rename? (y/n): \e[0m' confirm
+            if [[ "$confirm" == [yY] ]]; then
+                mv -v "$target" "$(dirname "$target")/$new_name" && echo -e "${GREEN}Renamed successfully!${NC}" || echo -e "${RED}Rename failed!${NC}"
+            else
+                echo -e "${YELLOW}Rename cancelled${NC}"
+            fi
+        else
+            echo -e "${RED}Invalid name!${NC}"
+        fi
+    fi
     sleep 2
 }
 
