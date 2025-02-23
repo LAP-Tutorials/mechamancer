@@ -79,10 +79,10 @@ resolve_path() {
 # Function to add repo (supports ~ in paths)
 add_repo() {
     if [ ${#REPOS[@]} -ge $MAX_REPOS ]; then
-        echo -e "${RED}Maximum number of repositories reached ($MAX_REPOS).${NC}\n"
+        echo -e "${RED}Maximum number of repositories reached ($MAX_REPOS). Please remove one.${NC}\n"
         return
     fi
-    read -p "Enter the full path of the repository: " repo_path
+    read -p "Enter the full path of the repository (eg: ~/storage/shared/Notes/Personal-Notes): " repo_path
     repo_path=$(resolve_path "$repo_path")
     if [ -d "$repo_path/.git" ]; then
         REPOS+=("$repo_path")

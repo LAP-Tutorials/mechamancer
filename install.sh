@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# mark update.sh as executable
+chmod +x update.sh
+
 # List all folders in the current directory
 echo "Available folders:"
 folders=()
