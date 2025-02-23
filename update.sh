@@ -39,3 +39,9 @@ cd $HOME/mechamancer
 git fetch --all
 
 git reset --hard origin/main
+
+chmod +x update.sh
+
+chmod +x install.sh
+
+./install.sh
