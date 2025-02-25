@@ -5,6 +5,8 @@ SHORTCUT="$HOME/.bin/mechm-t-file"
 TERMUX_ROOT="/data/data/com.termux/files"
 HOME_DIR="$HOME"
 SDCARD_DIR="/sdcard"
+current_dir="$HOME_DIR"
+operation_type=""
 
 # Colors
 RED='\033[1;31m'
