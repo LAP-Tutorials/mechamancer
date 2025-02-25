@@ -13,7 +13,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m'
 
-# Step 1: Shortcut creation
+# Shortcut creation
 create_shortcut() {
     if [ ! -f "$SHORTCUT" ]; then
         mkdir -p "$HOME/.bin"
@@ -79,12 +79,13 @@ list_contents() {
     echo -e "${YELLOW}b) Back to main menu${NC}"
 }
 
-browse_directory() {
+select_target() {
+    local target_type="$1"
     while true; do
         show_header
         list_contents
         
-        read -p "Select item or action: " choice
+        read -p "Select ${target_type} or navigate: " choice
         
         case $choice in
             0)
@@ -105,11 +106,27 @@ browse_directory() {
                 
                 if [[ $choice -le ${#items[@]} ]]; then
                     selected="${items[$((choice-1))]}"
+                    
                     if [[ -d "$selected" ]]; then
-                        current_dir="$selected"
+                        if [[ "$target_type" == "folder" ]]; then
+                            read -p "Operate on this folder or enter it? (o/e): " decision
+                            if [[ "$decision" == [oO] ]]; then
+                                target_path="$selected"
+                                return 0
+                            else
+                                current_dir="$selected"
+                            fi
+                        else
+                            current_dir="$selected"
+                        fi
                     else
-                        echo -e "Selected: ${YELLOW}$selected${NC}"
-                        return 0
+                        if [[ "$target_type" == "file" ]]; then
+                            target_path="$selected"
+                            return 0
+                        else
+                            echo -e "${RED}Selected item is a file, but operation requires folder!${NC}"
+                            sleep 2
+                        fi
                     fi
                 else
                     echo -e "${RED}Invalid selection!${NC}"
@@ -136,9 +153,9 @@ main_menu() {
         read -p "Select option: " main_choice
         
         case $main_choice in
-            1) current_dir="$TERMUX_ROOT"; browse_directory ;;
-            2) current_dir="$HOME_DIR"; browse_directory ;;
-            3) current_dir="$SDCARD_DIR"; browse_directory ;;
+            1) current_dir="$TERMUX_ROOT"; select_target "folder" ;;
+            2) current_dir="$HOME_DIR"; select_target "folder" ;;
+            3) current_dir="$SDCARD_DIR"; select_target "folder" ;;
             4) file_operations ;;
             0) exit 0 ;;
             *) echo -e "${RED}Invalid option!${NC}"; sleep 1 ;;
@@ -152,61 +169,86 @@ file_operations() {
         echo -e "${GREEN}1) Copy"
         echo "2) Move"
         echo "3) Delete"
-        echo "4) Create directory"
-        echo "5) Rename"
-        echo -e "${YELLOW}6) Back to main menu${NC}"
+        echo "4) Rename"
+        echo -e "${YELLOW}5) Back to main menu${NC}"
         
         read -p "Select operation: " op_choice
         
         case $op_choice in
-            1) perform_operation "copy" ;;
-            2) perform_operation "move" ;;
-            3) delete_item ;;
-            4) create_directory ;;
-            5) rename_item ;;
-            6) return ;;
+            1) handle_operation "copy" ;;
+            2) handle_operation "move" ;;
+            3) handle_operation "delete" ;;
+            4) handle_operation "rename" ;;
+            5) return ;;
             *) echo -e "${RED}Invalid operation!${NC}"; sleep 1 ;;
         esac
     done
 }
 
-perform_operation() {
-    local operation=$1
-    echo -e "\n${BLUE}Select source item:${NC}"
-    browse_directory
-    local src="$selected"
+handle_operation() {
+    local operation="$1"
     
-    echo -e "\n${BLUE}Select destination directory:${NC}"
-    browse_directory
-    local dest="$selected"
+    # Ask for file/folder type first
+    while true; do
+        show_header
+        echo -e "Operation: ${BLUE}${operation}${NC}"
+        echo "1) File"
+        echo "2) Folder"
+        read -p "Select target type: " type_choice
+        
+        case $type_choice in
+            1) operation_type="file"; break ;;
+            2) operation_type="folder"; break ;;
+            *) echo -e "${RED}Invalid choice!${NC}"; sleep 1 ;;
+        esac
+    done
+
+    case $operation in
+        "copy") perform_copy_move "copy" ;;
+        "move") perform_copy_move "move" ;;
+        "delete") perform_delete ;;
+        "rename") perform_rename ;;
+    esac
+}
+
+perform_copy_move() {
+    local operation="$1"
     
-    if [[ -n "$src" && -n "$dest" ]]; then
-        read -p $'\e[31mAre you sure? (y/n): \e[0m' confirm
-        if [[ "$confirm" == [yY] ]]; then
-            case $operation in
-                "copy")
-                    cp -rv "$src" "$dest" && echo -e "${GREEN}Copied successfully!${NC}" || echo -e "${RED}Copy failed!${NC}"
-                    ;;
-                "move")
-                    mv -v "$src" "$dest" && echo -e "${GREEN}Moved successfully!${NC}" || echo -e "${RED}Move failed!${NC}"
-                    ;;
-            esac
-        else
-            echo -e "${YELLOW}Operation cancelled${NC}"
-        fi
+    # Select source
+    echo -e "\n${BLUE}Select source ${operation_type}:${NC}"
+    if select_target "$operation_type"; then
+        local source="$target_path"
     else
-        echo -e "${RED}Invalid selection!${NC}"
+        return
+    fi
+
+    # Select destination
+    echo -e "\n${BLUE}Select destination directory:${NC}"
+    if select_target "folder"; then
+        local dest="$target_path"
+    else
+        return
+    fi
+
+    # Confirmation
+    read -p $'\e[31mConfirm ${operation} "${source}" to "${dest}"? (y/n): \e[0m' confirm
+    if [[ "$confirm" == [yY] ]]; then
+        case $operation in
+            "copy") cp -rv "$source" "$dest" ;;
+            "move") mv -v "$source" "$dest" ;;
+        esac
+        echo -e "${GREEN}Operation completed!${NC}"
+    else
+        echo -e "${YELLOW}Operation cancelled${NC}"
     fi
     sleep 2
 }
 
-delete_item() {
-    echo -e "\n${BLUE}Select item to delete:${NC}"
-    browse_directory
-    local target="$selected"
-    
-    if [[ -n "$target" ]]; then
-        read -p $'\e[31mARE YOU SURE? (y/n): \e[0m' confirm
+perform_delete() {
+    echo -e "\n${BLUE}Select ${operation_type} to delete:${NC}"
+    if select_target "$operation_type"; then
+        local target="$target_path"
+        read -p $'\e[31mPERMANENTLY DELETE "${target}"? (y/n): \e[0m' confirm
         if [[ "$confirm" == [yY] ]]; then
             rm -rvf "$target" && echo -e "${GREEN}Deleted successfully!${NC}" || echo -e "${RED}Deletion failed!${NC}"
         else
@@ -216,28 +258,15 @@ delete_item() {
     sleep 2
 }
 
-create_directory() {
-    show_header
-    read -p "Enter directory name: " dir_name
-    if [[ -n "$dir_name" ]]; then
-        mkdir -pv "$current_dir/$dir_name" && echo -e "${GREEN}Directory created!${NC}" || echo -e "${RED}Creation failed!${NC}"
-    else
-        echo -e "${RED}Invalid name!${NC}"
-    fi
-    sleep 2
-}
-
-rename_item() {
-    echo -e "\n${BLUE}Select item to rename:${NC}"
-    browse_directory
-    local target="$selected"
-    
-    if [[ -n "$target" ]]; then
+perform_rename() {
+    echo -e "\n${BLUE}Select ${operation_type} to rename:${NC}"
+    if select_target "$operation_type"; then
+        local target="$target_path"
         show_header
-        echo -e "Renaming: ${YELLOW}$target${NC}"
+        echo -e "Current name: ${YELLOW}$(basename "$target")${NC}"
         read -p "Enter new name: " new_name
         if [[ -n "$new_name" ]]; then
-            read -p $'\e[31mConfirm rename? (y/n): \e[0m' confirm
+            read -p $'\e[31mConfirm rename to "${new_name}"? (y/n): \e[0m' confirm
             if [[ "$confirm" == [yY] ]]; then
                 mv -v "$target" "$(dirname "$target")/$new_name" && echo -e "${GREEN}Renamed successfully!${NC}" || echo -e "${RED}Rename failed!${NC}"
             else
